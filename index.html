@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <title>Armageddon</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        #contenedor {
+            padding-top: 5vh;
+            width: 920px;
+            position: relative;
+            margin: auto;
+        }
+        #escenario {
+            background-image: url('./img/armageddon.jpg');
+            background-repeat: no-repeat;
+        }
+
+        /*font-family: 'Press Start 2P', cursive;*/
+    </style>
+    
+</head>
+<body>
+    <section id="contenedor">
+        <div id="restart" class="d-flex justify-content-center mb-3"></div>
+        <canvas id="escenario" width="920px" height="500px" onclick="comenzar()">
+        Su navegador no soporta canvas
+        </canvas>
+        <div class="row">
+            <div class="col-8">
+                <div class="row">
+                    <div class="col-6">
+                        <button class="btn d-flex justify-content-end" id="btnIzquierda" onclick="moverIzquierda();" disabled="true"><img src="./img/btnLeft.png" style="width: 50%;"></button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn d-flex justify-content-start" id="btnDerecha" onclick="moverDerecha();" disabled="true"><img src="./img/btnRight.png" style="width: 50%;"></button>
+                    </div>
+                </div>
+                
+            </div>
+
+            <div class="col-4 ">
+                <button class="btn" onclick="disparar()" id="btnDisparo" disabled="true"><img src="./img/btnDisparo.png" style="width: 50%;"></button>
+            </div>
+            
+        </div>
+        <div id="img"></div>
+    </section>
+    
+    <script>
+        class Actor {
+            constructor(x, y){
+                this.x = x;
+                this.y = y;
+            }
+}
+        //cogemos el canvas
+        var escenario = document.getElementById("escenario");
+        //creamos objeto 2d
+        var lienzo = escenario.getContext("2d");
+        //listas para meteoritos y balas en pantalla
+        var meteoritos = [];
+        var balas = [];
+        //nave principal, jugador
+        var nave = new Actor(450, 450);
+        //control movimiento nave
+        var left = false;
+        var right = false;
+        var velocidadNave = 7;
+        var velocidadBala = 10;
+
+        //resto de configuracion
+        var meteoritoSpeed = 1;
+        var tiempoEntreMeteoritos = 5 * 1000;
+        var timeOut=null;
+        var intervaloMeteo = null;
+        var startTime;
+        var score = 0;
+        var nivel = 1;
+
+        
+        /**
+         * Función principal para jugar
+         */
+        function comenzar(){
+            //si la lista de meteoritos esta vacia significa que vamos a empezar a jugar
+            
+            if (meteoritos.length < 1){
+                //habilitamos botones
+                //desabilitamos botones
+                document.getElementById('btnDerecha').disabled = false;
+                document.getElementById('btnIzquierda').disabled = false;
+                document.getElementById('btnDisparo').disabled = false;
+
+                startTime = Date.now();
+                dibujarNave();
+                dibujarMeteoritos();
+                dibujarScore();
+            } else {
+                gameOver();
+            }
+
+        }
+
+        /**
+         * Funcion para mostrar contador en pantalla
+         */
+        function dibujarScore(){
+            if(score > 10){
+                //subimos nivel
+                scoreStr = "" + score;
+                nivel = parseInt(scoreStr.slice(0,1))+1;
+            }
+            lienzo.font = "20px Comic Sans MS";
+            lienzo.fillStyle = "rgb(250, 240, 225)";
+            lienzo.textAlign = "center";
+            lienzo.fillText(`SCORE: ${score}`, 60, 40);
+            lienzo.fillText(`LEVEL: ${nivel}`, escenario.width-60, 40);
+        }
+
+        /**
+         * Función para dibujar nave
+         */
+        function dibujarNave(){
+            if(right && nave.x < escenario.width - 50) nave.x += velocidadNave;
+            if(left && nave.x > 0) nave.x -= velocidadNave;
+
+            //imagen nave
+            let naveImg = new Image();
+            naveImg.src = 'img/nave.png';
+            naveImg.onload = function(){
+                lienzo.drawImage(naveImg, nave.x, nave.y);
+            }
+        }
+        
+        /**
+         * Función que dibuja objetos uno por uno con intervalo de tiempo
+         */
+        function dibujarMeteoritos(){
+            //imagen meteorito
+            let meteorito = new Image();
+            
+            meteorito.onload = function() {
+                //el primer meteorito lo tenemos que pintar antes del intervalo, para que el juego empiece pronto
+                m = new Actor(Math.round(Math.random() * (escenario.width-50)), 0);
+                            meteoritos.push(m);
+                            lienzo.drawImage(meteorito, m.x, m.y);
+                
+                  //creamos meteoritos en intervalo de tiempo
+                 timeOut = setInterval(function(){
+                    //creamos meteorito y lo metemos en la lista si se da una condicion
+                    if ((Date.now()-startTime) % 5 == 3 && meteoritos.length<(2+nivel)){ //
+                        //Math.trunc((Date.now()-startTime)/1000) % 5 == 0 && meteoritos.length<5
+                    m = new Actor(Math.round(Math.random() * (escenario.width-50)), 0);
+                    meteoritos.push(m);
+                    }
+                    console.log(m)
+                        
+                    clear()
+                }, 1000/60)
+            }
+            meteorito.src = './img/rsz_meteorito.png';
+        }
+
+        /**
+         * Funcion para limpiar pantalla
+         */
+        function clear(){
+            //cargamos imagen para nuevo fondo y mostramos en pantalla
+            var background = new Image();
+            background.src = "img/tierraResize.jpg";
+
+            background.onload = function() {
+            lienzo.drawImage(background, 0, 0);
+            setInterval(repintar(), 1000)
+            }
+
+        }
+
+        /**
+         * Funcion para repintar escena de juego
+         */
+        function repintar(){
+             //repintamos listas meteoritos y balas
+            repintarListaMeteoritos();
+            repintarListaBalas();
+            dibujarScore();
+             //llamamos a funcion para pintar nave
+             dibujarNave()
+             //cada vez que repintamos comprobamos que ningun meteorito ha llegado a tierra o ha tocado la nave
+            comprobarChoquesMeteoritos();
+            //comproibamos choques de las balas
+            comprobarChoquesBalas();
+        }
+
+        /**
+         * Funcion para repintar meteoritos en pantalla (desplazados)
+         */
+        function repintarListaMeteoritos(){
+            let meteorito = new Image();
+             meteorito.onload = function() {
+                 meteoritos.forEach(m => {
+                    lienzo.drawImage(meteorito, m.x, m.y);
+                    m.y += meteoritoSpeed;
+                 });
+             }
+             meteorito.src = './img/rsz_meteorito.png';
+        }
+
+        /**
+         * Funcion para repintar balas en pantalla (desplazadas)
+         */
+        function repintarListaBalas(){
+            let balaImg = new Image();
+            balaImg.onload = function() {
+                 balas.forEach(b => {
+                    //las balas se desplazan hacia arriba
+                    b.y -= velocidadBala;
+                    lienzo.drawImage(balaImg, b.x, b.y);
+                    console.log('Bala y position: ', b.y);
+                 });
+             }
+             balaImg.src = './img/bullet.png';
+        }
+        /**
+         *  Funcion que comprueba si un numero (a) esta entre un rango (b, c)
+         */
+        function isEnRango(a, b, c) {
+        return (a > b && a < c);
+        }
+
+        /**
+         * Funcion para comprobar si los meteoritos chocan con la tierra o la nave
+         */
+        function comprobarChoquesMeteoritos(){
+            //si algun meteorito llega a y == escenario.height el juego se acaba
+            for(let i = 0; i < meteoritos.length; i++){
+                if (meteoritos[i].y > escenario.height-47) gameOver()
+                //tambien comprobamos si alguno choca con la nave    isWithin(a.x, b.x, b.x + b.l) || isWithin(a.x + a.l, b.x, b.x + b.l)
+                if(meteoritos[i].y+25 > nave.y && (isEnRango(meteoritos[i].x, nave.x, nave.x+25) || isEnRango(meteoritos[i].x+25, nave.x, nave.x+25))){//meteoritos[i].x > nave.x && meteoritos[i].x < nave.x+50
+                    console.log('nave x, y: ' , nave.x ,' ', nave.y);
+                    console.log('\nmeteorito x, y: ' , meteoritos[i].x ,' ', meteoritos[i].y);
+                    gameOver()
+                } 
+            }
+        }
+
+        /**
+         * Funcion para crear bala, anadirla a la lista y pintarla por primera vez en pantalla
+         */
+        function comprobarChoquesBalas(){
+            
+            for(let b = 0; b < balas.length; b++){
+                //primero comprobamos si alguna bala ha salido del lienzo para eliminarla de la lista
+                if(balas[b].y-29 < 0) balas.splice(b, 1);
+                //ahora comprobamos choques con la lista de metoritos
+                for(let m = 0; m < meteoritos.length; m++){
+                    if (isEnRango(balas[b].x, meteoritos[m].x, meteoritos[m].x + 50) || isEnRango(balas[b].x + 15, meteoritos[m].x, meteoritos[m].x + 50)) {
+                        if (isEnRango(balas[b].y, meteoritos[m].y, meteoritos[m].y + 50) || isEnRango(balas[b].y + 29, meteoritos[m].y, meteoritos[m].y + 50)) {
+                        //si chocan, eliminamos meteorito y bala de la lista
+                        balas.splice(b, 1);
+                        meteoritos.splice(m, 1);
+                        //sumamos 1 al marcador del jugador
+                        score++;
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Funcion para crear bala, anadirla a la lista y pintarla por primera vez en pantalla
+         */
+        function disparar(){
+            console.log('dispara')
+            //cargamos imagen bala
+            let balaImg = new Image();
+            balaImg.src = './img/bullet.png';
+            balaImg.onload = function(){
+                //creamos bala para anadirla a la lista de balas
+                //como las dispara la nave, su punto de partida es la localizacion de esta
+                b = new Actor(nave.x + 17.5, nave.y - 10.5);
+                balas.push(b);
+                //pintamos en pantalla la primera vez
+                lienzo.drawImage(balaImg, b.x, b.y)
+            }
+            console.log('lista balas: ', balas)
+        }
+        
+        /**
+         * Funcion para controlar desplazamiento de nave hacia la derecha
+         */
+        function moverDerecha(){
+            //comprobamos que no se salga del lienzo
+            if (nave.x < escenario.width - 50) {
+                nave.x += velocidadNave;
+            }
+            
+        }
+
+        /**
+         * Funcion para controlar desplazamiento de nave hacia la izquierda
+         */
+        function moverIzquierda(){
+            if (nave.x > 0) {
+                nave.x -= velocidadNave;
+            }
+        }
+
+        function moverNaveHorizontal(){
+            if(right) nave.x += velocidadNave;
+            if(left) nave.x -= velocidadNave;
+        }
+
+        /**
+         * Funcion para detener intervalos y finalizar el juego
+         */
+         function gameOver(){
+            //paramos intervalos
+            clearInterval(timeOut);
+            clearInterval(intervaloMeteo)
+           
+            //luego mostramos imagen game over
+            var gameOver = new Image();
+            gameOver.src = "img/gameOverText.png";
+
+            gameOver.onload = function() {
+            lienzo.drawImage(gameOver, 320, 260);
+            }
+
+            
+            //mostramos botón volver a jugar
+            document.getElementById("restart").innerHTML = `<button class="btn btn-dark" type="button" onclick="window.location.reload();">
+                <i class="bi-arrow-repeat" style="color: white;"></i>Volver a jugar</button>`
+            
+
+            //desabilitamos botones
+            document.getElementById('btnDerecha').disabled = true;
+            document.getElementById('btnIzquierda').disabled = true;
+            document.getElementById('btnDisparo').disabled = true;
+
+            console.log('Balas:' , balas, '\nScore: ', score)
+        }
+
+        /**
+         * Control de eventos de teclado
+         */
+        document.addEventListener('keydown', (e)=>{
+            if(e.key=='ArrowRight') right=true;//moverDerecha();
+            if(e.key=='ArrowLeft') left=true//moverIzquierda();
+            if(e.key==' ') disparar();
+            if(e.key=='Enter') disparar();
+            console.log(e)
+        })
+
+        document.addEventListener('keyup', (e)=>{
+            if(e.key=='ArrowRight') right=false;//moverDerecha();
+            if(e.key=='ArrowLeft') left=false//moverIzquierda();
+            
+        })
+
+        document.addEventListener('touchstart', (e)=>{
+            if(e.target.matches('#btnDerecha')) right = true;
+            if(e.target.matches('#btnIzquierda')) right = true;
+        })
+
+        document.addEventListener('touchend', (e)=>{
+            if(e.target.matches('#btnDerecha')) right = false;
+            if(e.target.matches('#btnIzquierda')) right = false;
+        })
+
+        //evento para click sobre imagen volver a jugar
+        document.addEventListener('click', (e)=>{
+            if(e.target.matches("#playAgain")) window.location.reload()
+        })
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+    crossorigin="anonymous"></script>
+</body>
